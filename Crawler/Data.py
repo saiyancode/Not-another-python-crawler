@@ -23,6 +23,10 @@ class load_queue():
                         url = re.sub(r"^/", "", url)
                         url = root_url + url
                         self.links.add(url)
+                    #This enables start directory only crawling capabilities
+                    elif link.attrs['href'].find(root_url) != -1 and crawl_type =='crawl':
+                        url = link.attrs['href']
+                        self.links.add(url)
                     elif crawl_type =='web' and link_base == ':///':
                         url = link.attrs['href']
                         url = re.sub(r"^/", "", url)
@@ -30,7 +34,6 @@ class load_queue():
                         self.links.add(url)
                     elif crawl_type =='web' and link_base != ':///':
                         url = link.attrs['href']
-                        print(url)
                         self.links.add(url)
 
             except:
@@ -96,7 +99,6 @@ class bloggers():
                                               VALUES(?,?,?,?,?,?,?,?,?,?,?,?)''', (Project,url,meta_title,
         title_length,meta_description,meta_description_length,response_header,canonical,canonical_count,robots,type1,self.now))
         db.commit()
-
 
 class link_finder():
 

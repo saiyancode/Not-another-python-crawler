@@ -1,4 +1,5 @@
 from Data import *
+from Searchterms import *
 import aiohttp
 import asyncio
 from aiohttp import ClientSession
@@ -6,16 +7,15 @@ from urllib.parse import urljoin, urldefrag, urlsplit, urlparse
 from bs4 import BeautifulSoup
 import sqlite3
 import time
-from Data import *
 
 # Settings so that it's possible to pause & resume crawls. 3 Crawl modes, list, crawl, web
 
-Project = 'sdsds'
+Project = 'Canon Crawl V2'
 Threads = 100
 crawl_type = 'crawl'
 domains = set()
 queue = []
-root_url = "http://www.zoopla.co.uk/"
+root_url = "http://www.canon.co.uk/"
 list_file = 'list.txt'
 queue.append(root_url)
 crawled_urls, url_hub = [], [root_url]
@@ -24,6 +24,8 @@ db = sqlite3.connect(Project)
 cursor = db.cursor()
 create_tables(db, cursor)
 into_campaigns(Project,now,cursor,db)
+
+search_terms = [line.rstrip('\n') for line in open(r'search-terms.txt')]
 
 def resume():
     c = cursor.execute('SELECT DOMAIN FROM DOMAINS WHERE ID = "{c}"'.format(c=Project))
@@ -44,11 +46,26 @@ if len(queue) == 1:
 
 def get_urls(html):
     new_urls = [url.split('"')[0] for url in str(html).replace("'",'"').split('href="')[1:]]
-    return [urljoin(root_url, remove_fragment(new_url)) for new_url in new_urls]
+    filtered = []
+    for i in new_urls:
+        link_base = "{0.scheme}://{0.netloc}/".format(urlsplit(i))
+        if link_base == ':///' and crawl_type == 'crawl':
+            url = i
+            url = re.sub(r"^/", "", url)
+            url = root_url + url
+            filtered.append(url)
+        elif i.find(root_url) != -1 and crawl_type == 'crawl':
+            filtered.append(i)
+        elif crawl_type == 'web':
+            filtered.append(i)
+        else:
+            continue
+    print(len(filtered))
+    return [urljoin(root_url, remove_fragment(new_url)) for new_url in filtered]
 
 async def get_body(url):
     async with ClientSession() as session:
-        async with session.get(url, timeout=30) as response:
+        async with session.get(url, timeout=60) as response:
             response = await response.read()
             #print(response)
             return response
@@ -61,13 +78,15 @@ async def handle_task(task_id, work_queue,Project):
         try:
             body = await get_body(queue_url)
             data = bloggers(queue_url, body, Project,cursor,db)
+            searches = search(queue_url, body, search_terms, root_url)
             for new_url in get_urls(body):
                 domain = "{0.scheme}://{0.netloc}/".format(urlsplit(new_url))
                 if new_url in crawled_urls:
                     pass
                 elif new_url in queue:
                     pass
-                elif domain == root_url and crawl_type == 'crawl':
+                #elif domain == root_url and crawl_type == 'crawl':
+                elif crawl_type == 'crawl':
                     now = time.strftime('%Y-%m-%d %H:%M')
                     into_queue(Project, new_url, now, cursor, db)
                     queue.append(new_url)
