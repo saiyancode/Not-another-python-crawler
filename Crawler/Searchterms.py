@@ -1,8 +1,4 @@
 from bs4 import BeautifulSoup
-import requests
-import time
-import re
-from urllib.parse import urljoin, urldefrag, urlsplit, urlparse
 
 class search():
     def __init__(self, queue_url, body, search_terms, root_url):

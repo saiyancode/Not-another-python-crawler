@@ -1,5 +1,6 @@
 from Data import *
 from Searchterms import *
+from extraction import *
 import aiohttp
 import asyncio
 from aiohttp import ClientSession
@@ -10,12 +11,12 @@ import time
 
 # Settings so that it's possible to pause & resume crawls. 3 Crawl modes, list, crawl, web
 
-Project = 'Canon Crawl V2'
-Threads = 100
+Project = 'Luxey'
+Threads = 1
 crawl_type = 'crawl'
 domains = set()
 queue = []
-root_url = "http://www.canon.co.uk/"
+root_url = "http://www.zoopla.co.uk/"
 list_file = 'list.txt'
 queue.append(root_url)
 crawled_urls, url_hub = [], [root_url]
@@ -25,7 +26,10 @@ cursor = db.cursor()
 create_tables(db, cursor)
 into_campaigns(Project,now,cursor,db)
 
-search_terms = [line.rstrip('\n') for line in open(r'search-terms.txt')]
+search_terms = searchterms()
+
+selectors = {'div': ['class','market-stats-text'],'span':['class','market-panel-stat-element-value js-market-stats-value-change market-panel-stat-value-change-up']}
+
 
 def resume():
     c = cursor.execute('SELECT DOMAIN FROM DOMAINS WHERE ID = "{c}"'.format(c=Project))
@@ -49,18 +53,18 @@ def get_urls(html):
     filtered = []
     for i in new_urls:
         link_base = "{0.scheme}://{0.netloc}/".format(urlsplit(i))
-        if link_base == ':///' and crawl_type == 'crawl':
+        if link_base.find(root_url) != -1 and crawl_type == 'crawl':
+            filtered.append(i)
+        elif link_base == ':///' and crawl_type == 'crawl':
             url = i
             url = re.sub(r"^/", "", url)
             url = root_url + url
             filtered.append(url)
-        elif i.find(root_url) != -1 and crawl_type == 'crawl':
-            filtered.append(i)
         elif crawl_type == 'web':
             filtered.append(i)
         else:
             continue
-    print(len(filtered))
+    #print(filtered)
     return [urljoin(root_url, remove_fragment(new_url)) for new_url in filtered]
 
 async def get_body(url):
@@ -78,7 +82,9 @@ async def handle_task(task_id, work_queue,Project):
         try:
             body = await get_body(queue_url)
             data = bloggers(queue_url, body, Project,cursor,db)
-            searches = search(queue_url, body, search_terms, root_url)
+            extractors(body, Project, queue_url, **selectors)
+            if len(search_terms) > 1:
+                (queue_url, body, search_terms, root_url)
             for new_url in get_urls(body):
                 domain = "{0.scheme}://{0.netloc}/".format(urlsplit(new_url))
                 if new_url in crawled_urls:

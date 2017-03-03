@@ -4,6 +4,12 @@ import time
 import re
 from urllib.parse import urljoin, urldefrag, urlsplit, urlparse
 
+def searchterms():
+    try:
+        return [line.rstrip('\n') for line in open(r'search-terms.txt')]
+    except:
+        return ''
+
 class load_queue():
     def __init__(self, root_url,crawl_type):
         self.links = set()
