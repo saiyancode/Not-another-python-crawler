@@ -11,7 +11,7 @@ def searchterms():
         return ''
 
 class load_queue():
-    def __init__(self, root_url,crawl_type):
+    def __init__(self, root_url,crawl_type,root_base):
         self.links = set()
         r = requests.get(root_url,timeout=10)
         soup = BeautifulSoup(r.text)
@@ -27,7 +27,7 @@ class load_queue():
                     elif link_base == ':///' and crawl_type =='crawl':
                         url = link.attrs['href']
                         url = re.sub(r"^/", "", url)
-                        url = root_url + url
+                        url = root_base + url
                         self.links.add(url)
                     #This enables start directory only crawling capabilities
                     elif link.attrs['href'].find(root_url) != -1 and crawl_type =='crawl':

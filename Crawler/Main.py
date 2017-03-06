@@ -11,12 +11,13 @@ import time
 
 # Settings so that it's possible to pause & resume crawls. 3 Crawl modes, list, crawl, web
 
-Project = 'House-data'
+Project = 'House-datav11'
 Threads = 100
 crawl_type = 'crawl'
 domains = set()
 queue = []
-root_url = "http://www.zoopla.co.uk/house-prices/property/"
+root_url = "http://www.zoopla.co.uk/house-prices/"
+root_base = "{0.scheme}://{0.netloc}/".format(urlsplit(root_url))
 list_file = 'list.txt'
 queue.append(root_url)
 crawled_urls, url_hub = [], [root_url]
@@ -47,7 +48,7 @@ def resume():
 resume()
 print(len(queue))
 if len(queue) == 1:
-    finder = load_queue(root_url,crawl_type)
+    finder = load_queue(root_url,crawl_type,root_base)
     [queue.append(i) for i in finder.page_links()]
 
 def get_urls(html):
@@ -55,19 +56,22 @@ def get_urls(html):
     filtered = []
     for i in new_urls:
         link_base = "{0.scheme}://{0.netloc}/".format(urlsplit(i))
+        link_path = "{0.path}".format(urlsplit(i))
         if link_base.find(root_url) != -1 and crawl_type == 'crawl':
-            filtered.append(i)
+            if i.find(link_path) != -1:
+                filtered.append(i)
         elif link_base == ':///' and crawl_type == 'crawl':
             url = i
             url = re.sub(r"^/", "", url)
-            url = root_url + url
-            filtered.append(url)
+            url = root_base + url
+            if url.find(root_url) != -1:
+                filtered.append(url)
         elif crawl_type == 'web':
             filtered.append(i)
         else:
             continue
-    #print(filtered)
-    return [urljoin(root_url, remove_fragment(new_url)) for new_url in filtered]
+    print(filtered)
+    return [urljoin(root_base, remove_fragment(new_url)) for new_url in filtered]
 
 async def get_body(url):
     async with ClientSession() as session:
