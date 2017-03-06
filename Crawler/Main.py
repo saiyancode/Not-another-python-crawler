@@ -1,6 +1,7 @@
 from Data import *
 from Searchterms import *
 from extraction import *
+from robotsgenerator import *
 import aiohttp
 import asyncio
 from aiohttp import ClientSession
@@ -11,13 +12,16 @@ import time
 
 # Settings so that it's possible to pause & resume crawls. 3 Crawl modes, list, crawl, web
 
-Project = 'House-datav11'
+Project = 'Luxetravel'
 Threads = 100
+Limit = 100
 crawl_type = 'crawl'
 domains = set()
 queue = []
-root_url = "http://www.zoopla.co.uk/house-prices/"
+root_url = "http://www.theluxetravel.com/"
 root_base = "{0.scheme}://{0.netloc}/".format(urlsplit(root_url))
+robots = generate_robots(root_base)
+print(robots)
 list_file = 'list.txt'
 queue.append(root_url)
 crawled_urls, url_hub = [], [root_url]
@@ -70,7 +74,6 @@ def get_urls(html):
             filtered.append(i)
         else:
             continue
-    print(filtered)
     return [urljoin(root_base, remove_fragment(new_url)) for new_url in filtered]
 
 async def get_body(url):
@@ -85,38 +88,44 @@ async def handle_task(task_id, work_queue,Project):
         queue_url = await work_queue.get()
         print('Now crawling ' + queue_url + " | there are "+ str(len(queue)) + " links in queue")
         crawled_urls.append(queue_url)
-        try:
-            body = await get_body(queue_url)
-            data = bloggers(queue_url, body, Project,cursor,db)
-            extractors(body, Project, queue_url, selectors)
-            if len(search_terms) > 1:
-                (queue_url, body, search_terms, root_url)
-            for new_url in get_urls(body):
-                domain = "{0.scheme}://{0.netloc}/".format(urlsplit(new_url))
-                if new_url in crawled_urls:
+        if len(crawled_urls) < Limit:
+            try:
+                body = await get_body(queue_url)
+                data = bloggers(queue_url, body, Project, cursor, db)
+                try:
+                    extractors(body, Project, queue_url, selectors)
+                except:
                     pass
-                elif new_url in queue:
-                    pass
-                #elif domain == root_url and crawl_type == 'crawl':
-                elif crawl_type == 'crawl':
-                    now = time.strftime('%Y-%m-%d %H:%M')
-                    into_queue(Project, new_url, now, cursor, db)
-                    queue.append(new_url)
-                    q.put_nowait(new_url)
-                elif domain not in domains and crawl_type == 'web':
-                    now = time.strftime('%Y-%m-%d %H:%M')
-                    into_queue(Project, new_url, now,cursor,db)
-                    queue.append(new_url)
-                    q.put_nowait(new_url)
-
-            now = time.strftime('%Y-%m-%d %H:%M')
-            domain = "{0.scheme}://{0.netloc}/".format(urlsplit(queue_url))
-            domains.add(domain)
-            if domain not in domains:
-                into_domains(Project, domain, now, cursor, db)
-        except Exception as e:
-            pass
-            print(e)
+                if len(search_terms) > 1:
+                    (queue_url, body, search_terms, root_url)
+                for new_url in get_urls(body):
+                    domain = "{0.scheme}://{0.netloc}/".format(urlsplit(new_url))
+                    if new_url in crawled_urls:
+                        pass
+                    elif new_url in queue:
+                        pass
+                    # elif domain == root_url and crawl_type == 'crawl':
+                    elif crawl_type == 'crawl':
+                        if robots.is_allowed('*', new_url):
+                            queue.append(new_url)
+                            q.put_nowait(new_url)
+                            now = time.strftime('%Y-%m-%d %H:%M')
+                            into_queue(Project, new_url, now, cursor, db)
+                    elif domain not in domains and crawl_type == 'web':
+                        now = time.strftime('%Y-%m-%d %H:%M')
+                        into_queue(Project, new_url, now, cursor, db)
+                        queue.append(new_url)
+                        q.put_nowait(new_url)
+                now = time.strftime('%Y-%m-%d %H:%M')
+                domain = "{0.scheme}://{0.netloc}/".format(urlsplit(queue_url))
+                domains.add(domain)
+                if domain not in domains:
+                    into_domains(Project, domain, now, cursor, db)
+            except Exception as e:
+                pass
+                print(e)
+        else:
+            print('Crawl has reached the limit fool!')
 
 def remove_fragment(url):
     pure_url, frag = urldefrag(url)
