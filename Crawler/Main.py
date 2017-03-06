@@ -11,12 +11,12 @@ import time
 
 # Settings so that it's possible to pause & resume crawls. 3 Crawl modes, list, crawl, web
 
-Project = 'Luxey'
-Threads = 1
+Project = 'House-data'
+Threads = 100
 crawl_type = 'crawl'
 domains = set()
 queue = []
-root_url = "http://www.zoopla.co.uk/"
+root_url = "http://www.zoopla.co.uk/house-prices/property/"
 list_file = 'list.txt'
 queue.append(root_url)
 crawled_urls, url_hub = [], [root_url]
@@ -28,7 +28,9 @@ into_campaigns(Project,now,cursor,db)
 
 search_terms = searchterms()
 
-selectors = {'div': ['class','market-stats-text'],'span':['class','market-panel-stat-element-value js-market-stats-value-change market-panel-stat-value-change-up']}
+selectors = [{'div': ['class','market-stats-text']}, {'span':['class','market-panel-stat-element-value js-market-stats-value-change market-panel-stat-value-change-up']},
+             {'span':['class','market-panel-stat-element-value js-market-stats-average-price']}, {'span':['class','market-panel-stat-element-value js-market-stats-average-value']}
+             , {'span':['class','market-panel-stat-element-value js-market-stats-num-sales']}]
 
 
 def resume():
@@ -82,7 +84,7 @@ async def handle_task(task_id, work_queue,Project):
         try:
             body = await get_body(queue_url)
             data = bloggers(queue_url, body, Project,cursor,db)
-            extractors(body, Project, queue_url, **selectors)
+            extractors(body, Project, queue_url, selectors)
             if len(search_terms) > 1:
                 (queue_url, body, search_terms, root_url)
             for new_url in get_urls(body):
