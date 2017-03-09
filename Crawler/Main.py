@@ -12,13 +12,13 @@ import time
 
 # Settings so that it's possible to pause & resume crawls. 3 Crawl modes, list, crawl, web
 
-Project = 'Luxetravel'
+Project = 'House-datav3'
 Threads = 100
-Limit = 100
+Limit = 100000000
 crawl_type = 'crawl'
 domains = set()
 queue = []
-root_url = "http://www.theluxetravel.com/"
+root_url = "http://www.zoopla.co.uk/house-prices/"
 root_base = "{0.scheme}://{0.netloc}/".format(urlsplit(root_url))
 robots = generate_robots(root_base)
 print(robots)
@@ -35,7 +35,7 @@ search_terms = searchterms()
 
 selectors = [{'div': ['class','market-stats-text']}, {'span':['class','market-panel-stat-element-value js-market-stats-value-change market-panel-stat-value-change-up']},
              {'span':['class','market-panel-stat-element-value js-market-stats-average-price']}, {'span':['class','market-panel-stat-element-value js-market-stats-average-value']}
-             , {'span':['class','market-panel-stat-element-value js-market-stats-num-sales']}]
+             ,{'span':['class','market-panel-stat-element-value js-market-stats-num-sales']}]
 
 
 def resume():
@@ -48,6 +48,11 @@ def resume():
     list1 = d.fetchall()
     list1 = [x[0] for x in list1]
     [queue.append(i) for i in list1]
+
+    d = cursor.execute('SELECT URL FROM CRAWLED WHERE id = "{c}"'.format(c=Project))
+    list1 = d.fetchall()
+    list1 = [x[0] for x in list1]
+    [crawled_urls.append(i) for i in list1]
 
 resume()
 print(len(queue))
@@ -121,6 +126,8 @@ async def handle_task(task_id, work_queue,Project):
                 domains.add(domain)
                 if domain not in domains:
                     into_domains(Project, domain, now, cursor, db)
+                remove_queue(Project, queue_url, cursor, db)
+                into_crawled(Project, queue_url, cursor, db, now)
             except Exception as e:
                 pass
                 print(e)

@@ -160,6 +160,11 @@ def create_tables(db, cursor):
                                url TEXT, time DATETIME)''')
     db.commit()
 
+    cursor.execute('''
+                CREATE TABLE IF NOT EXISTS crawled(id TEXT,
+                                   url TEXT, time DATETIME)''')
+    db.commit()
+
 def into_queue(Project, new_url, now,cursor,db):
     cursor.execute('''INSERT INTO queue(id,url,time)
                                    VALUES(?,?,?)''', (Project, new_url, now))
@@ -173,4 +178,14 @@ def into_domains(Project,domain, now,cursor,db):
 def into_campaigns(Project, now,cursor,db):
     cursor.execute('''INSERT INTO campaigns(id,project,time)
                               VALUES(?,?,?)''', (Project, Project, now))
+    db.commit()
+
+def remove_queue(Project, queue_url,cursor,db):
+    cursor.execute('SELECT URL FROM QUEUE WHERE url = "{c}"'.format(c=queue_url))
+    #cursor.execute('''DELETE FROM queue WHERE id = "{c}"'.format(c=Project))
+    db.commit()
+
+def into_crawled(Project, queue_url,cursor,db,now):
+    cursor.execute('''INSERT INTO crawled(id,url,time)
+                                  VALUES(?,?,?)''', (Project, queue_url,now))
     db.commit()
