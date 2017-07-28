@@ -25,7 +25,7 @@ class extractors():
                 except:
                     pass
                 string.append(str(result))
-        with open('extraction-working-new.csv','a',encoding='utf-8') as file:
+        with open('extraction-working-new-sitemap.csv','a',encoding='utf-8') as file:
             string = '|'.join(string)
             file.write('{}|{}\n'.format(url, string))
             #print('complete')

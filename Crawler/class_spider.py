@@ -10,7 +10,6 @@ from bs4 import BeautifulSoup
 import sqlite3
 import time
 
-data = []
 
 async def get_body(url):
     async with ClientSession() as session:

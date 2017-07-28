@@ -12,13 +12,13 @@ import time
 
 # Settings so that it's possible to pause & resume crawls. 3 Crawl modes, list, crawl, web
 
-Project = 'House-datav3'
+Project = 'Travelblogs'
 Threads = 100
 Limit = 100000000
-crawl_type = 'crawl'
+crawl_type = 'web'
 domains = set()
 queue = []
-root_url = "http://www.zoopla.co.uk/house-prices/"
+root_url = "http://nomadicsamuel.com/top100travelblogs"
 root_base = "{0.scheme}://{0.netloc}/".format(urlsplit(root_url))
 robots = generate_robots(root_base)
 print(robots)
@@ -47,16 +47,28 @@ def resume():
     d = cursor.execute('SELECT URL FROM QUEUE WHERE id = "{c}"'.format(c=Project))
     list1 = d.fetchall()
     list1 = [x[0] for x in list1]
-    [queue.append(i) for i in list1]
+    finallist1 = []
+    for i in list1:
+        domain = "{0.scheme}://{0.netloc}/".format(urlsplit(i))
+        if domain not in domains and domain.find('http') != -1:
+            finallist1.append(i)
+    [queue.append(i) for i in finallist1]
 
     d = cursor.execute('SELECT URL FROM CRAWLED WHERE id = "{c}"'.format(c=Project))
     list1 = d.fetchall()
     list1 = [x[0] for x in list1]
     [crawled_urls.append(i) for i in list1]
 
+if crawl_type == 'list':
+    qq = [line.rstrip('\n') for line in open(r'list.txt')]
+    for i in qq:
+        queue.append(i)
+
 resume()
+
 print(len(queue))
-if len(queue) == 1:
+
+if len(queue) == 1 and crawl_type != 'list':
     finder = load_queue(root_url,crawl_type,root_base)
     [queue.append(i) for i in finder.page_links()]
 
@@ -123,9 +135,9 @@ async def handle_task(task_id, work_queue,Project):
                         q.put_nowait(new_url)
                 now = time.strftime('%Y-%m-%d %H:%M')
                 domain = "{0.scheme}://{0.netloc}/".format(urlsplit(queue_url))
-                domains.add(domain)
                 if domain not in domains:
                     into_domains(Project, domain, now, cursor, db)
+                domains.add(domain)
                 remove_queue(Project, queue_url, cursor, db)
                 into_crawled(Project, queue_url, cursor, db, now)
             except Exception as e:
